@@ -1,0 +1,38 @@
+[
+  {
+    "product_id": "xy-1001",
+    "supplier_id": "1688-xy-1001",
+    "supplier_name": "1688home货源-桌面",
+    "source_price": 16.45,
+    "moq": 2,
+    "shipping_cost": 3.5,
+    "profit_est": 7.56,
+    "plain_package": true,
+    "supplier_rating": 4.6,
+    "matched_at": "2026-03-19T17:37:26Z"
+  },
+  {
+    "product_id": "pdd-2001",
+    "supplier_id": "1688-pdd-2001",
+    "supplier_name": "1688digital货源-蓝牙",
+    "source_price": 41.89,
+    "moq": 1,
+    "shipping_cost": 4.2,
+    "profit_est": 8.19,
+    "plain_package": false,
+    "supplier_rating": 4.4,
+    "matched_at": "2026-03-19T17:37:26Z"
+  },
+  {
+    "product_id": "xy-1002",
+    "supplier_id": "1688-xy-1002",
+    "supplier_name": "1688pet货源-宠物",
+    "source_price": 6.4,
+    "moq": 2,
+    "shipping_cost": 3.2,
+    "profit_est": 2.18,
+    "plain_package": true,
+    "supplier_rating": 4.6,
+    "matched_at": "2026-03-19T17:37:26Z"
+  }
+]

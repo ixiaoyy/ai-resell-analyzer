@@ -25,14 +25,23 @@
 # 安装依赖
 pip install -r requirements.txt
 
-# 抓取热销数据（示例）
-python -m scraper --platform xianyu --limit 100
+# 使用示例数据运行 Analyzer MVP
+python -m analyzer --input examples/raw_products.sample.json
 
-# 分析并匹配货源
+# 基于 Analyzer 输出运行 Matcher MVP
+python -m matcher --input data/analyzed/raw_products.sample_analyzed.json
+
+# 基于 Analyzer 输出运行 Copywriter MVP
+python -m copywriter --input data/analyzed/raw_products.sample_analyzed.json
+
+# 聚合 Analyzer / Matcher / Copywriter 输出，生成 Dashboard 审核数据
+python -m dashboard --analyzed data/analyzed/raw_products.sample_analyzed.json --matched data/matched/raw_products.sample_analyzed_matched.json --copydrafts data/copydrafts/raw_products.sample_analyzed_copydrafts.json
+
+# 使用真实抓取结果运行 Analyzer
 python -m analyzer --input data/raw/xianyu_latest.json
 
-# 启动决策看板
-python -m dashboard
+# 运行测试
+python -m pytest tests/test_analyzer.py tests/test_matcher.py tests/test_copywriter.py tests/test_dashboard.py
 ```
 
 ## 文档索引
@@ -47,7 +56,7 @@ python -m dashboard
 
 - [x] 项目规范与文档体系
 - [ ] scraper 模块 MVP
-- [ ] analyzer 模块 MVP
-- [ ] matcher 模块 MVP
-- [ ] copywriter 模块 MVP
-- [ ] dashboard 看板 MVP
+- [x] analyzer 模块 MVP
+- [x] matcher 模块 MVP
+- [x] copywriter 模块 MVP
+- [x] dashboard 看板 MVP

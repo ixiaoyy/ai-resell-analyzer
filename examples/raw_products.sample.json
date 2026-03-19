@@ -1,0 +1,35 @@
+[
+  {
+    "id": "xy-1001",
+    "platform": "xianyu",
+    "title": "奶油风桌面收纳盒 ins 白色化妆品整理盒",
+    "price": 29.9,
+    "want_count": 168,
+    "image_url": "https://example.com/images/xy-1001.jpg",
+    "category": "家居收纳",
+    "fetched_at": "2026-03-19T16:00:00Z",
+    "raw_tags": ["桌面", "收纳", "奶油风", "ins"]
+  },
+  {
+    "id": "pdd-2001",
+    "platform": "pinduoduo",
+    "title": "蓝牙耳机 迷你降噪通勤款 黑色",
+    "price": 59.0,
+    "sales_count": 356,
+    "image_url": "https://example.com/images/pdd-2001.jpg",
+    "category": "数码配件",
+    "fetched_at": "2026-03-19T16:05:00Z",
+    "raw_tags": ["蓝牙", "耳机", "通勤", "黑色"]
+  },
+  {
+    "id": "xy-1002",
+    "platform": "xianyu",
+    "title": "宠物猫抓板 可爱耐磨瓦楞纸",
+    "price": 12.8,
+    "want_count": 24,
+    "image_url": "https://example.com/images/xy-1002.jpg",
+    "category": "宠物用品",
+    "fetched_at": "2026-03-19T16:10:00Z",
+    "raw_tags": ["宠物", "猫", "耐磨"]
+  }
+]

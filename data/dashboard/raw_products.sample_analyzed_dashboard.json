@@ -1,0 +1,134 @@
+[
+  {
+    "product_id": "xy-1001",
+    "title": "奶油风桌面收纳盒 ins 白色化妆品整理盒",
+    "platform": "xianyu",
+    "price": 29.9,
+    "product_score": 96.0,
+    "trend": "rising",
+    "category_label": "home",
+    "supplier": {
+      "supplier_id": "1688-xy-1001",
+      "supplier_name": "1688home货源-桌面",
+      "source_price": 16.45,
+      "shipping_cost": 3.5,
+      "profit_est": 7.56,
+      "plain_package": true,
+      "supplier_rating": 4.6
+    },
+    "copydraft": {
+      "title": "家居好物 ins 白色 桌面 收纳 奶油风 奶油风桌面收纳盒",
+      "body": "最近问的人很多，已经帮你挑过重点了。 这款我更看重的是 ins / 白色 / 桌面，现在到手参考价 29.90 元，适合想低预算先入手试试的人。",
+      "tags": [
+        "ins",
+        "白色",
+        "桌面",
+        "收纳",
+        "奶油风"
+      ],
+      "template_id": "hot-trend"
+    },
+    "review": {
+      "priority": "medium",
+      "recommendation": "建议人工复核标题、利润和货源稳定性",
+      "decision": "pending",
+      "decision_options": [
+        "approved",
+        "skipped",
+        "blacklisted"
+      ],
+      "reason": "",
+      "decided_by": "",
+      "decided_at": null
+    },
+    "dashboard_generated_at": "2026-03-19T17:49:10Z"
+  },
+  {
+    "product_id": "pdd-2001",
+    "title": "蓝牙耳机 迷你降噪通勤款 黑色",
+    "platform": "pinduoduo",
+    "price": 59.0,
+    "product_score": 98.73,
+    "trend": "rising",
+    "category_label": "digital",
+    "supplier": {
+      "supplier_id": "1688-pdd-2001",
+      "supplier_name": "1688digital货源-蓝牙",
+      "source_price": 41.89,
+      "shipping_cost": 4.2,
+      "profit_est": 8.19,
+      "plain_package": false,
+      "supplier_rating": 4.4
+    },
+    "copydraft": {
+      "title": "数码实用 通勤 黑色 蓝牙 耳机 蓝牙耳机",
+      "body": "最近问的人很多，已经帮你挑过重点了。 这款我更看重的是 通勤 / 黑色 / 蓝牙，现在到手参考价 59.00 元，适合想低预算先入手试试的人。",
+      "tags": [
+        "通勤",
+        "黑色",
+        "蓝牙",
+        "耳机",
+        "蓝牙耳机"
+      ],
+      "template_id": "hot-trend"
+    },
+    "review": {
+      "priority": "high",
+      "recommendation": "建议人工复核标题、利润和货源稳定性",
+      "decision": "pending",
+      "decision_options": [
+        "approved",
+        "skipped",
+        "blacklisted"
+      ],
+      "reason": "",
+      "decided_by": "",
+      "decided_at": null
+    },
+    "dashboard_generated_at": "2026-03-19T17:49:10Z"
+  },
+  {
+    "product_id": "xy-1002",
+    "title": "宠物猫抓板 可爱耐磨瓦楞纸",
+    "platform": "xianyu",
+    "price": 12.8,
+    "product_score": 65.0,
+    "trend": "stable",
+    "category_label": "pet",
+    "supplier": {
+      "supplier_id": "1688-xy-1002",
+      "supplier_name": "1688pet货源-宠物",
+      "source_price": 6.4,
+      "shipping_cost": 3.2,
+      "profit_est": 2.18,
+      "plain_package": true,
+      "supplier_rating": 4.6
+    },
+    "copydraft": {
+      "title": "养宠必备 可爱 宠物 耐磨 宠物猫抓板 可爱耐磨瓦楞纸",
+      "body": "这类东西一直都很实用，属于不容易踩雷的选择。 整体卖点比较清晰：可爱 / 宠物 / 耐磨。参考价 12.80 元，日常自用或者顺手转卖都比较顺。",
+      "tags": [
+        "可爱",
+        "宠物",
+        "耐磨",
+        "宠物猫抓板",
+        "可爱耐磨瓦楞纸"
+      ],
+      "template_id": "steady-value"
+    },
+    "review": {
+      "priority": "low",
+      "recommendation": "建议先观察或跳过，避免占用上架精力",
+      "decision": "pending",
+      "decision_options": [
+        "approved",
+        "skipped",
+        "blacklisted"
+      ],
+      "reason": "",
+      "decided_by": "",
+      "decided_at": null
+    },
+    "dashboard_generated_at": "2026-03-19T17:49:10Z"
+  }
+]
