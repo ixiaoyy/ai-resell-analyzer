@@ -1,0 +1,50 @@
+[
+  {
+    "id": "xy-3001",
+    "platform": "xianyu",
+    "title": "奶油风桌面收纳盒 ins 白色化妆品整理盒",
+    "price": 29.9,
+    "want_count": 168,
+    "image_url": "https://example.com/images/xy-3001.jpg",
+    "category": "家居收纳",
+    "raw_tags": [
+      "桌面",
+      "收纳",
+      "奶油风",
+      "ins"
+    ],
+    "fetched_at": "2026-03-20T03:53:17Z"
+  },
+  {
+    "id": "xy-3002",
+    "platform": "xianyu",
+    "title": "宠物猫抓板 可爱耐磨瓦楞纸 猫窝两用",
+    "price": 15.9,
+    "want_count": 87,
+    "image_url": "https://example.com/images/xy-3002.jpg",
+    "category": "宠物用品",
+    "raw_tags": [
+      "宠物",
+      "猫",
+      "猫抓板",
+      "耐磨"
+    ],
+    "fetched_at": "2026-03-20T03:53:17Z"
+  },
+  {
+    "id": "xy-3003",
+    "platform": "xianyu",
+    "title": "极简风实木置物架桌面书架 原木色",
+    "price": 89.0,
+    "want_count": 204,
+    "image_url": "https://example.com/images/xy-3003.jpg",
+    "category": "家居收纳",
+    "raw_tags": [
+      "实木",
+      "置物架",
+      "极简",
+      "原木风"
+    ],
+    "fetched_at": "2026-03-20T03:53:17Z"
+  }
+]
