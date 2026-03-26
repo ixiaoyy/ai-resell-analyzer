@@ -175,7 +175,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--count",
         type=int,
-        default=None,
+        default=5,
         help="Max number of products to return (default: 5)",
     )
     parser.add_argument("--output", help="Optional output path for raw product JSON")
