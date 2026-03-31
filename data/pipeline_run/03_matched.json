@@ -1,0 +1,38 @@
+[
+  {
+    "product_id": "xy-1001",
+    "supplier_id": "1688-xy-1001",
+    "supplier_name": "1688home货源-奶油风桌面收纳盒",
+    "source_price": 17.94,
+    "shipping_cost": 2.8,
+    "profit_est": 7.37,
+    "moq": 2,
+    "plain_package": true,
+    "supplier_rating": 4.6,
+    "matched_at": "2026-03-31T15:57:33Z"
+  },
+  {
+    "product_id": "pdd-2001",
+    "supplier_id": "1688-pdd-2001",
+    "supplier_name": "1688digital货源-蓝牙耳机",
+    "source_price": 37.17,
+    "shipping_cost": 3.5,
+    "profit_est": 14.79,
+    "moq": 1,
+    "plain_package": false,
+    "supplier_rating": 4.2,
+    "matched_at": "2026-03-31T15:57:33Z"
+  },
+  {
+    "product_id": "xy-1002",
+    "supplier_id": "1688-xy-1002",
+    "supplier_name": "1688other货源-普通杂物袋",
+    "source_price": 9.69,
+    "shipping_cost": 2.8,
+    "profit_est": 5.37,
+    "moq": 2,
+    "plain_package": true,
+    "supplier_rating": 4.6,
+    "matched_at": "2026-03-31T15:57:33Z"
+  }
+]

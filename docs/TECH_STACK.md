@@ -40,9 +40,11 @@
 
 ## 环境管理
 
+- Windows 本地开发建议显式使用 `py -3.12`，避免落到系统默认的 Python 2.7
 - 使用 `venv` 或 `uv` 管理虚拟环境
 - 依赖锁定：`requirements.txt`（精确版本）
 - 环境变量：`.env` 文件（`.gitignore` 中排除）
+- 若默认 PyPI 网络不稳定，可临时使用清华镜像：`py -3.12 -m pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple`
 
 ## 不引入的技术（MVP 阶段）
 

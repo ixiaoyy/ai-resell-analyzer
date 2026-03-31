@@ -1,0 +1,47 @@
+[
+  {
+    "id": "xy-1001",
+    "platform": "xianyu",
+    "title": "奶油风桌面收纳盒 ins 白色化妆品整理盒",
+    "price": 29.9,
+    "want_count": 168,
+    "image_url": "https://example.com/images/xy-1001.jpg",
+    "category": "家居收纳",
+    "fetched_at": "2026-03-31T15:57:33Z",
+    "raw_tags": [
+      "桌面",
+      "收纳",
+      "奶油风",
+      "ins"
+    ]
+  },
+  {
+    "id": "pdd-2001",
+    "platform": "pinduoduo",
+    "title": "蓝牙耳机 迷你降噪通勤款 黑色",
+    "price": 59.0,
+    "sales_count": 356,
+    "image_url": "https://example.com/images/pdd-2001.jpg",
+    "category": "数码配件",
+    "fetched_at": "2026-03-31T13:57:33Z",
+    "raw_tags": [
+      "蓝牙",
+      "耳机",
+      "通勤",
+      "黑色"
+    ]
+  },
+  {
+    "id": "xy-1002",
+    "platform": "xianyu",
+    "title": "普通杂物袋",
+    "price": 19.0,
+    "want_count": 2,
+    "category": "其他",
+    "fetched_at": "2026-03-31T15:57:33Z",
+    "raw_tags": [
+      "杂物袋",
+      "收纳袋"
+    ]
+  }
+]

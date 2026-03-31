@@ -2,49 +2,13 @@ from __future__ import annotations
 
 import argparse
 import json
-<<<<<<< HEAD
-from pathlib import Path
-
-from app.schemas import AnalyzedProduct, MatchedSupplier
-from copywriter import build_copy_drafts
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description="为商品候选生成文案草稿")
-    parser.add_argument("--products", type=Path, required=True, help="AnalyzedProduct JSON 文件路径")
-    parser.add_argument("--suppliers", type=Path, required=True, help="MatchedSupplier JSON 文件路径")
-    parser.add_argument(
-        "--output",
-        type=Path,
-        default=Path("data") / "copy" / "copy_latest.json",
-        help="CopyDraft 输出文件路径",
-    )
-    args = parser.parse_args()
-
-    product_data = json.loads(args.products.read_text(encoding="utf-8"))
-    supplier_data = json.loads(args.suppliers.read_text(encoding="utf-8"))
-    products = [AnalyzedProduct.model_validate(item) for item in product_data]
-    suppliers = {
-        supplier.product_id: supplier
-        for supplier in (MatchedSupplier.model_validate(item) for item in supplier_data)
-    }
-    drafts = build_copy_drafts(products, suppliers)
-
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(
-        json.dumps([draft.model_dump(mode="json") for draft in drafts], ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
-    print(f"generated {len(drafts)} copy drafts to {args.output}")
-
-
-if __name__ == "__main__":
-    main()
-=======
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+
+from app.schemas import AnalyzedProduct, MatchedSupplier
+from copywriter import build_copy_drafts
 
 
 DEFAULT_OUTPUT_DIR = Path("data/copydrafts")
@@ -240,29 +204,41 @@ def build_output_path(input_path: Path, output: Path | None) -> Path:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate copy drafts from analyzed product data")
-    parser.add_argument("--input", required=True, help="Path to AnalyzedProduct JSON file")
+    parser.add_argument("--input", help="Path to AnalyzedProduct JSON file")
+    parser.add_argument("--products", help="Path to AnalyzedProduct JSON file")
+    parser.add_argument("--suppliers", help="Optional MatchedSupplier JSON file")
     parser.add_argument("--output", help="Optional output path for copy draft JSON")
-    return parser.parse_args()
+    args = parser.parse_args()
+    if not args.input and not args.products:
+        parser.error("one of --input or --products is required")
+    return args
 
 
 def main() -> int:
     args = parse_args()
-    input_path = Path(args.input)
+    input_path = Path(args.input or args.products)
     output_path = build_output_path(input_path, Path(args.output) if args.output else None)
 
-    copywriter = ProductCopywriter()
-    analyzed_products = load_analyzed_products(input_path)
-    drafts = copywriter.generate_drafts(analyzed_products)
+    products = [AnalyzedProduct.model_validate(item) for item in load_analyzed_products(input_path)]
+    suppliers: dict[str, MatchedSupplier] = {}
+    if args.suppliers:
+        payload = json.loads(Path(args.suppliers).read_text(encoding="utf-8"))
+        suppliers = {
+            supplier.product_id: supplier
+            for supplier in (MatchedSupplier.model_validate(item) for item in payload)
+        }
+
+    drafts = build_copy_drafts(products, suppliers)
+    if not args.suppliers:
+        drafts_json = ProductCopywriter().generate_drafts([product.model_dump(mode="json") for product in products])
+    else:
+        drafts_json = [draft.model_dump(mode="json") for draft in drafts]
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(
-        json.dumps(drafts, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
-    print(f"Generated {len(drafts)} copy drafts -> {output_path}")
+    output_path.write_text(json.dumps(drafts_json, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"generated {len(drafts_json)} copy drafts to {output_path}")
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
->>>>>>> 3311d2de910204e56242a82af8a79f0e33c51ef4

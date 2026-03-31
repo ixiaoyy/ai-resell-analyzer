@@ -22,26 +22,35 @@
 ## 快速开始
 
 ```bash
-# 安装依赖
-pip install -r requirements.txt
+# Windows 下建议显式使用 Python 3.12
+py -3.12 -m pip install -r requirements.txt
+
+# 若默认 PyPI 连接较慢，可切换清华镜像
+py -3.12 -m pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+
+# 启动当前 API 服务
+py -3.12 -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+
+# 健康检查
+py -3.12 -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/health').read().decode())"
+
+# 启动 Streamlit 看板
+py -3.12 -m streamlit run dashboard.py
+
+# 使用示例数据运行完整流水线
+py -3.12 run_pipeline.py --platform all --count 5
 
 # 使用示例数据运行 Analyzer MVP
-python -m analyzer --input examples/raw_products.sample.json
+py -3.12 -m analyzer --input examples/raw_products.sample.json
 
 # 基于 Analyzer 输出运行 Matcher MVP
-python -m matcher --input data/analyzed/raw_products.sample_analyzed.json
+py -3.12 -m matcher --input data/analyzed/raw_products.sample_analyzed.json
 
 # 基于 Analyzer 输出运行 Copywriter MVP
-python -m copywriter --input data/analyzed/raw_products.sample_analyzed.json
+py -3.12 -m copywriter --input data/analyzed/raw_products.sample_analyzed.json
 
 # 聚合 Analyzer / Matcher / Copywriter 输出，生成 Dashboard 审核数据
-python -m dashboard --analyzed data/analyzed/raw_products.sample_analyzed.json --matched data/matched/raw_products.sample_analyzed_matched.json --copydrafts data/copydrafts/raw_products.sample_analyzed_copydrafts.json
-
-# 使用真实抓取结果运行 Analyzer
-python -m analyzer --input data/raw/xianyu_latest.json
-
-# 运行测试
-python -m pytest tests/test_analyzer.py tests/test_matcher.py tests/test_copywriter.py tests/test_dashboard.py
+py -3.12 -m dashboard --analyzed data/analyzed/raw_products.sample_analyzed.json --matched data/matched/raw_products.sample_analyzed_matched.json --copydrafts data/copydrafts/raw_products.sample_analyzed_copydrafts.json
 ```
 
 ## 文档索引
