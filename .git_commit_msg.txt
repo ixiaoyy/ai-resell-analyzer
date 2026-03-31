@@ -1,0 +1,9 @@
+feat(scraper): add scraper module MVP with mock data
+
+- Implement ProductScraper class with --platform/--count/--output CLI args
+- Support xianyu, pinduoduo, all platforms
+- Output standard RawProduct JSON per DATA_SCHEMA
+- Add 8 tests covering field validation, platform filter, count limit, error handling
+- Add claims and changes docs per CONTRIBUTING protocol
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>

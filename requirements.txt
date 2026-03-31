@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 fastapi==0.115.12
 pydantic==2.11.3
 streamlit==1.44.1
 uvicorn==0.34.0
+=======
+pytest==8.3.5
+>>>>>>> 3311d2de910204e56242a82af8a79f0e33c51ef4
