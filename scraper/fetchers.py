@@ -107,10 +107,13 @@ class JinaPageFetcher(BasePageFetcher):
             "Accept": "text/plain, text/html, application/json;q=0.9, */*;q=0.8",
             "X-Return-Format": "markdown",
         }
-        with httpx.Client(timeout=self._timeout, follow_redirects=True, headers=headers) as client:
-            response = client.get(f"{JINA_PREFIX}{url}")
-            response.raise_for_status()
-            text = response.text.strip()
+        try:
+            with httpx.Client(timeout=self._timeout, follow_redirects=True, headers=headers) as client:
+                response = client.get(f"{JINA_PREFIX}{url}")
+                response.raise_for_status()
+                text = response.text.strip()
+        except httpx.HTTPError as exc:
+            raise FetchError(f"Jina fetch failed for {url}: {exc}") from exc
         if not text:
             raise FetchError(f"Empty response for {url}")
         return text
@@ -139,10 +142,13 @@ class FirecrawlPageFetcher(BasePageFetcher):
             "mobile": True,
             "waitFor": 2000,
         }
-        with httpx.Client(timeout=self._timeout, follow_redirects=True, headers=headers) as client:
-            response = client.post("https://api.firecrawl.dev/v2/scrape", json=payload)
-            response.raise_for_status()
-            data = response.json()
+        try:
+            with httpx.Client(timeout=self._timeout, follow_redirects=True, headers=headers) as client:
+                response = client.post("https://api.firecrawl.dev/v2/scrape", json=payload)
+                response.raise_for_status()
+                data = response.json()
+        except httpx.HTTPError as exc:
+            raise FetchError(f"Firecrawl fetch failed for {url}: {exc}") from exc
 
         markdown = (
             data.get("data", {}).get("markdown")

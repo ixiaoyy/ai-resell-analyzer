@@ -128,4 +128,5 @@ class SearchService:
         )
 
 
+
 search_service = SearchService()

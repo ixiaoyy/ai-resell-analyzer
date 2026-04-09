@@ -179,7 +179,7 @@ class SearchHit(BaseModel):
 
 
 class SearchSummary(BaseModel):
-    total_hits: int = Field(ge=0)
+    total_hits: int = Field(default=0, ge=0)
     platform_counts: dict[str, int] = Field(default_factory=dict)
     data_source_counts: dict[str, int] = Field(default_factory=dict)
 
