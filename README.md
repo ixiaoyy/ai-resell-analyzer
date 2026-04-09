@@ -12,12 +12,13 @@
 
 | 模块 | 职责 |
 |------|------|
-| `scraper/` | 抓取闲鱼/拼多多热销数据 |
-| `analyzer/` | AI 分析热度趋势、商品特征 |
-| `matcher/` | 1688 货源关键词/图文匹配与比价 |
-| `copywriter/` | 生成闲鱼风格文案 |
-| `dashboard/` | 人工决策看板（Web UI） |
-| `data/` | 本地数据缓存与商品库 |
+| `scraper/` | 抓取闲鱼/拼多多热销数据，支持多后端、来源标记、错误分类与样本回退 |
+| `analyzer/` | 规则化分析热度趋势、商品特征与潜力评分 |
+| `matcher/` | 1688 货源关键词匹配、利润估算与黑名单过滤 |
+| `copywriter/` | 生成闲鱼风格文案草稿 |
+| `dashboard/` | CLI 聚合输出与人工决策看板数据装配 |
+| `app/` | 统一候选装配、API、AI 资产与存储层 |
+| `data/` | 本地数据缓存、阶段产物与 SQLite 数据库 |
 
 ## 快速开始
 
@@ -51,6 +52,9 @@ py -3.12 -m copywriter --input data/analyzed/raw_products.sample_analyzed.json
 
 # 聚合 Analyzer / Matcher / Copywriter 输出，生成 Dashboard 审核数据
 py -3.12 -m dashboard --analyzed data/analyzed/raw_products.sample_analyzed.json --matched data/matched/raw_products.sample_analyzed_matched.json --copydrafts data/copydrafts/raw_products.sample_analyzed_copydrafts.json
+
+# 真实抓取 smoke test（默认跳过，需显式开启）
+set RUN_REAL_SCRAPER_SMOKE=1 && python -m pytest tests/test_scraper_smoke.py -q
 ```
 
 ## 文档索引
@@ -64,8 +68,12 @@ py -3.12 -m dashboard --analyzed data/analyzed/raw_products.sample_analyzed.json
 ## 项目状态
 
 - [x] 项目规范与文档体系
-- [ ] scraper 模块 MVP
+- [x] scraper 模块 MVP
 - [x] analyzer 模块 MVP
 - [x] matcher 模块 MVP
 - [x] copywriter 模块 MVP
 - [x] dashboard 看板 MVP
+- [x] SQLite 决策 / 黑名单 / 利润记录持久化
+- [x] FastAPI 候选列表 / 汇总 / 决策接口
+- [x] CLI / API / Dashboard 共用统一候选装配逻辑
+- [x] Scraper 来源标记、错误分类、统计摘要与 smoke test 入口

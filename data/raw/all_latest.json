@@ -1,0 +1,68 @@
+[
+  {
+    "id": "xy-1001",
+    "platform": "xianyu",
+    "platform_code": null,
+    "platform_role": "demand",
+    "title": "奶油风桌面收纳小推车 三层带滑轮",
+    "price": 49.9,
+    "want_count": 328,
+    "sales_count": null,
+    "image_url": "https://example.com/images/cart.jpg",
+    "category": "家居收纳",
+    "fetched_at": "2026-04-09T00:55:46.525800Z",
+    "raw_tags": [
+      "奶油风",
+      "桌面",
+      "收纳"
+    ],
+    "data_source": "sample",
+    "backend_used": "sample",
+    "source_detail": "sample:all",
+    "fetch_error_category": null
+  },
+  {
+    "id": "pdd-2001",
+    "platform": "pinduoduo",
+    "platform_code": null,
+    "platform_role": "demand",
+    "title": "宿舍床边折叠小夜灯 USB 充电",
+    "price": 29.9,
+    "want_count": null,
+    "sales_count": 1824,
+    "image_url": "https://example.com/images/lamp.jpg",
+    "category": "宿舍用品",
+    "fetched_at": "2026-04-09T02:55:46.525800Z",
+    "raw_tags": [
+      "夜灯",
+      "宿舍",
+      "折叠"
+    ],
+    "data_source": "sample",
+    "backend_used": "sample",
+    "source_detail": "sample:all",
+    "fetch_error_category": null
+  },
+  {
+    "id": "xy-1002",
+    "platform": "xianyu",
+    "platform_code": null,
+    "platform_role": "demand",
+    "title": "北欧风脏衣篮 可折叠大容量",
+    "price": 39.9,
+    "want_count": 96,
+    "sales_count": null,
+    "image_url": "https://example.com/images/basket.jpg",
+    "category": "家居清洁",
+    "fetched_at": "2026-04-08T22:55:46.525800Z",
+    "raw_tags": [
+      "北欧风",
+      "脏衣篮",
+      "折叠"
+    ],
+    "data_source": "sample",
+    "backend_used": "sample",
+    "source_detail": "sample:all",
+    "fetch_error_category": null
+  }
+]

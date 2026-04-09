@@ -25,6 +25,7 @@ register_default_platforms()
 
 API_BASE_URL = "http://127.0.0.1:8000"
 SEARCH_MODE_LABEL = "实时搜索工作台"
+REVIEW_MODE_LABEL = "候选审核看板"
 
 
 def _get_candidates() -> list[CandidateBundle]:
@@ -341,9 +342,58 @@ def render_candidate_card(index: int, candidate: CandidateBundle) -> None:
 
 def main() -> None:
     st.set_page_config(page_title="AI 选品助手", layout="wide")
-    st.title("AI 选品助手 Dashboard")
-    st.write("当前页面默认进入实时搜索工作台，不再展示内置样本或假数据候选页。")
-    _render_search_workspace()
+    st.title("AI 选品助手 Dashboard MVP")
+    st.write("优先读取 data 目录中的流水线结果；若尚未生成文件，则自动回退到内置示例数据。")
+
+    mode = st.sidebar.radio("工作模式", options=[SEARCH_MODE_LABEL, REVIEW_MODE_LABEL], index=0)
+
+    if mode == SEARCH_MODE_LABEL:
+        _render_search_workspace()
+        return
+
+    candidates = _get_candidates()
+    summary = _decision_summary(candidates)
+    profit_summary = load_profit_summary()
+    blacklist_summary = load_blacklist_summary()
+    platform_opportunities = summarize_platform_opportunities(candidates)
+
+    st.sidebar.header("概览")
+    st.sidebar.write(f"候选商品数：{len(candidates)}")
+    st.sidebar.write("人工审核优先，禁止自动上架。")
+    st.sidebar.write(f"已通过：{summary[Decision.APPROVED]}")
+    st.sidebar.write(f"已跳过：{summary[Decision.SKIPPED]}")
+    st.sidebar.write(f"已拉黑：{summary[Decision.BLACKLISTED]}")
+    st.sidebar.write(f"商家黑名单：{blacklist_summary['supplier_count']}")
+    st.sidebar.write(f"品类黑名单：{blacklist_summary['category_count']}")
+    st.sidebar.write(f"累计利润记录：{int(profit_summary['total_count'])}")
+    st.sidebar.write(f"累计预估利润：¥{profit_summary['total_profit']:.2f}")
+
+    st.subheader("平台机会工作台")
+    if platform_opportunities:
+        st.dataframe(platform_opportunities, use_container_width=True, hide_index=True)
+    else:
+        st.info("暂无平台机会聚合数据")
+
+    st.sidebar.header("筛选")
+    min_score = st.sidebar.slider("最低潜力评分", min_value=60, max_value=100, value=60)
+    platform_options = list(registry.codes(role="sell_target")) or sorted(
+        {candidate.product.platform_code or candidate.product.platform.value for candidate in candidates}
+    )
+    selected_platforms = st.sidebar.multiselect("平台", options=platform_options, default=platform_options)
+    decision_filter = st.sidebar.selectbox("决策状态", options=["全部", "未处理", *LABEL_TO_DECISION.keys()])
+    keyword_query = st.sidebar.text_input("关键词检索", placeholder="商品标题 / 关键词 / 商家")
+
+    filtered_candidates = _filter_candidates(
+        candidates,
+        min_score=min_score,
+        selected_platforms=selected_platforms or platform_options,
+        decision_filter=decision_filter,
+        keyword_query=keyword_query,
+    )
+    st.write(f"当前筛选后候选数：{len(filtered_candidates)}")
+
+    for index, candidate in enumerate(filtered_candidates, start=1):
+        render_candidate_card(index, candidate)
 
 
 if __name__ == "__main__":

@@ -43,6 +43,9 @@ def test_build_rows_generates_review_ready_records() -> None:
     assert row["product_id"] == "xy-1001"
     assert row["supplier"]["supplier_id"] == "1688-xy-1001"
     assert row["copydraft"]["template_id"] == "hot-trend"
+    assert row["ai_recommendation"]["recommended_source_platform"] == "1688"
+    assert row["listing_copy_asset"]["variants"]
+    assert row["image_asset"]["prompt_spec"]["scene"] == "marketplace-hero"
     assert row["review"]["priority"] == "high"
     assert row["review"]["decision"] == "pending"
     assert row["review"]["decision_options"] == ["approved", "skipped", "blacklisted"]

@@ -1,4 +1,4 @@
-# 数据协议 DATA_SCHEMA v0.1
+# 数据协议 DATA_SCHEMA v0.3
 
 ## 总览
 
@@ -12,6 +12,8 @@
 |------|------|------|------|
 | `id` | string | ✅ | 平台商品 ID |
 | `platform` | enum | ✅ | `xianyu` / `pinduoduo` |
+| `platform_code` | string | ❌ | 统一平台编码，默认与 `platform` 一致 |
+| `platform_role` | string | ✅ | 平台角色，当前 demand/supply 使用 demand |
 | `title` | string | ✅ | 原始标题 |
 | `price` | float | ✅ | 售价（元） |
 | `want_count` | int | ❌ | 闲鱼「想要人数」 |
@@ -20,6 +22,10 @@
 | `category` | string | ❌ | 平台分类标签 |
 | `fetched_at` | string | ✅ | ISO8601 抓取时间 |
 | `raw_tags` | string[] | ❌ | 原始标签列表 |
+| `data_source` | string | ✅ | 数据来源，如 `real` / `sample` / `dashboard` |
+| `backend_used` | string | ❌ | 实际抓取或组装所用后端，如 `browser` / `proxy` / `text` / `sample` |
+| `source_detail` | string | ❌ | 来源细节，如 `sample:all` 或具体抓取前缀/查询上下文 |
+| `fetch_error_category` | string | ❌ | 抓取失败分类；真实抓取成功时为 `null`，样本回退时可记录如 `timeout` / `http_error` / `empty_result` |
 
 ---
 
@@ -87,6 +93,22 @@
 
 ---
 
+## CandidateBundle（统一候选装配输出）
+
+由 [`app/pipeline.py`](../app/pipeline.py) 统一装配，供 [`app/main.py`](../app/main.py)、[`dashboard.py`](../dashboard.py) 与 [`dashboard/__main__.py`](../dashboard/__main__.py) 复用。
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `product` | `AnalyzedProduct` | ✅ | 候选商品主体 |
+| `supplier` | `MatchedSupplier \| null` | ❌ | 匹配到的货源 |
+| `copy_draft` | `CopyDraft \| null` | ❌ | 文案草稿 |
+| `decision` | `DecisionRecord \| null` | ❌ | 已保存的人工决策 |
+| `ai_recommendation` | object \| null | ❌ | AI 平台建议与机会评分 |
+| `listing_copy_asset` | object \| null | ❌ | AI 销售文案资产 |
+| `image_asset` | object \| null | ❌ | AI 配图提示资产 |
+
+---
+
 ## DecisionRecord（Dashboard 人工决策）
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -99,9 +121,22 @@
 
 ---
 
+## 存储与输出目录约定
+
+- [`data/raw/`](../data/raw/)：抓取阶段原始 JSON
+- [`data/analyzed/`](../data/analyzed/)：分析结果 JSON
+- [`data/matched/`](../data/matched/)：货源匹配结果 JSON
+- [`data/copydrafts/`](../data/copydrafts/)：文案草稿 JSON
+- [`data/dashboard/`](../data/dashboard/)：CLI 聚合后的 Dashboard JSON
+- [`data/pipeline_run/`](../data/pipeline_run/)：单次完整流水线运行的阶段输出
+- [`data/app.db`](../data/app.db)：SQLite 决策、黑名单、利润记录
+
+---
+
 ## 协议变更规则
 
 - 任何字段新增、删除、类型变更、枚举值变更均视为 Schema 变更
 - Schema 变更必须：单独提 PR + 提前提交认领说明 + 更新本文档
 - AI 不得擅自修改本文档
 - 版本升级格式：`DATA_SCHEMA v0.x`，在文件头部更新版本号
+- 当前版本补充了抓取可观测性字段、统一装配输出与目录口径说明

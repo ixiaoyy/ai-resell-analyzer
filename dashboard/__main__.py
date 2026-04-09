@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timezone
 from pathlib import Path
 from typing import Any
 
+
+from app.pipeline import build_candidate_bundles_from_parts
+from app.schemas import AnalyzedProduct, CandidateBundle, CopyDraft, MatchedSupplier
 
 DEFAULT_OUTPUT_DIR = Path("data/dashboard")
 DEFAULT_DECISION = "pending"
@@ -29,7 +32,10 @@ class DashboardAggregator:
         supplier_map = {str(item["product_id"]): item for item in matched_suppliers}
         copy_map = {str(item["product_id"]): item for item in copydrafts}
 
-        rows: list[dict[str, Any]] = []
+        analyzed_models: list[AnalyzedProduct] = []
+        supplier_models: dict[str, MatchedSupplier] = {}
+        copy_models: dict[str, CopyDraft] = {}
+
         for analyzed_product in analyzed_products:
             self._validate_analyzed_product(analyzed_product)
             product_id = str(analyzed_product["id"])
@@ -43,43 +49,51 @@ class DashboardAggregator:
 
             self._validate_matched_supplier(supplier)
             self._validate_copydraft(copydraft)
-            rows.append(self._build_row(analyzed_product, supplier, copydraft))
+            analyzed_models.append(self._build_analyzed_product_model(analyzed_product))
+            supplier_models[product_id] = self._build_supplier_model(supplier)
+            copy_models[product_id] = self._build_copydraft_model(copydraft)
 
-        return rows
+        bundles = build_candidate_bundles_from_parts(
+            analyzed_products=analyzed_models,
+            suppliers=supplier_models,
+            copies=copy_models,
+        )
+        return [self._build_row(bundle) for bundle in bundles]
 
-    def _build_row(
-        self,
-        analyzed_product: dict[str, Any],
-        supplier: dict[str, Any],
-        copydraft: dict[str, Any],
-    ) -> dict[str, Any]:
-        score = float(analyzed_product["product_score"])
-        profit = float(supplier["profit_est"])
-        recommendation = self._build_recommendation(score, profit, bool(supplier["plain_package"]))
+    def _build_row(self, candidate: CandidateBundle) -> dict[str, Any]:
+        if candidate.supplier is None or candidate.copy_draft is None or candidate.ai_recommendation is None:
+            raise DashboardError(f"Incomplete candidate bundle for product_id: {candidate.product.id}")
+
+        score = float(candidate.product.product_score)
+        profit = float(candidate.supplier.profit_est)
+        recommendation = self._build_recommendation(score, profit, bool(candidate.supplier.plain_package))
 
         return {
-            "product_id": analyzed_product["id"],
-            "title": analyzed_product["title"],
-            "platform": analyzed_product["platform"],
-            "price": float(analyzed_product["price"]),
+            "product_id": candidate.product.id,
+            "title": candidate.product.title,
+            "platform": candidate.product.platform.value,
+            "price": float(candidate.product.price),
             "product_score": score,
-            "trend": analyzed_product["trend"],
-            "category_label": analyzed_product["category_label"],
+            "trend": candidate.product.trend.value,
+            "category_label": candidate.product.category_label,
             "supplier": {
-                "supplier_id": supplier["supplier_id"],
-                "supplier_name": supplier["supplier_name"],
-                "source_price": float(supplier["source_price"]),
-                "shipping_cost": float(supplier["shipping_cost"]),
+                "supplier_id": candidate.supplier.supplier_id,
+                "supplier_name": candidate.supplier.supplier_name,
+                "source_price": float(candidate.supplier.source_price),
+                "shipping_cost": float(candidate.supplier.shipping_cost),
                 "profit_est": profit,
-                "plain_package": bool(supplier["plain_package"]),
-                "supplier_rating": float(supplier["supplier_rating"]),
+                "plain_package": bool(candidate.supplier.plain_package),
+                "supplier_rating": float(candidate.supplier.supplier_rating or 0.0),
             },
             "copydraft": {
-                "title": copydraft["title"],
-                "body": copydraft["body"],
-                "tags": copydraft["tags"],
-                "template_id": copydraft["template_id"],
+                "title": candidate.copy_draft.title,
+                "body": candidate.copy_draft.body,
+                "tags": candidate.copy_draft.tags,
+                "template_id": candidate.copy_draft.template_id,
             },
+            "ai_recommendation": candidate.ai_recommendation.model_dump(mode="json"),
+            "listing_copy_asset": candidate.listing_copy_asset.model_dump(mode="json") if candidate.listing_copy_asset is not None else None,
+            "image_asset": candidate.image_asset.model_dump(mode="json") if candidate.image_asset is not None else None,
             "review": {
                 "priority": self._infer_priority(score, profit),
                 "recommendation": recommendation,
@@ -140,6 +154,31 @@ class DashboardAggregator:
         missing = [field for field in required_fields if field not in copydraft]
         if missing:
             raise DashboardError(f"Missing copy draft fields: {', '.join(missing)}")
+
+    def _build_analyzed_product_model(self, analyzed_product: dict[str, Any]) -> AnalyzedProduct:
+        payload = dict(analyzed_product)
+        now_iso = datetime.now(timezone.utc).isoformat()
+        payload.setdefault("fetched_at", now_iso)
+        payload.setdefault("analyzed_at", now_iso)
+        payload.setdefault("platform_code", str(payload.get("platform", "unknown")))
+        payload.setdefault("platform_role", "demand")
+        payload.setdefault("data_source", "dashboard")
+        payload.setdefault("backend_used", "dashboard-aggregate")
+        payload.setdefault("raw_tags", [])
+        payload.setdefault("features", {})
+        payload.setdefault("keywords", [])
+        return AnalyzedProduct.model_validate(payload)
+
+    def _build_supplier_model(self, supplier: dict[str, Any]) -> MatchedSupplier:
+        payload = dict(supplier)
+        payload.setdefault("moq", 1)
+        payload.setdefault("matched_at", datetime.now(timezone.utc).isoformat())
+        return MatchedSupplier.model_validate(payload)
+
+    def _build_copydraft_model(self, copydraft: dict[str, Any]) -> CopyDraft:
+        payload = dict(copydraft)
+        payload.setdefault("generated_at", datetime.now(timezone.utc).isoformat())
+        return CopyDraft.model_validate(payload)
 
 
 def utc_now_iso() -> str:

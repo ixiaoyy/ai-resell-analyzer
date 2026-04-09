@@ -10,18 +10,34 @@ from analyzer.__main__ import ProductAnalyzer
 from copywriter.__main__ import ProductCopywriter
 from dashboard.__main__ import DashboardAggregator
 from matcher.__main__ import SupplierMatcher
+from platforms.defaults import register_default_platforms
+from platforms.registry import registry
 from scraper.__main__ import ProductScraper
+from scraper.fetchers import FetchBackend
 
+
+register_default_platforms()
 
 DATA_DIR = Path("data")
 
 
-def run_pipeline(platform: str, count: int, output_dir: Path) -> Path:
+def run_pipeline(
+    platform: str,
+    count: int,
+    output_dir: Path,
+    use_real_source: bool = True,
+    use_sample_fallback: bool = True,
+    backend: FetchBackend = "auto",
+) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Stage 1 — Scrape
     raw_path = output_dir / "01_raw.json"
-    scraper = ProductScraper()
+    scraper = ProductScraper(
+        use_real_source=use_real_source,
+        use_sample_fallback=use_sample_fallback,
+        backend=backend,
+    )
     raw_products = scraper.scrape(platform=platform, count=count)
     raw_path.write_text(json.dumps(raw_products, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"[1/4] Scraped    {len(raw_products)} products  → {raw_path}")
@@ -61,7 +77,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--platform",
         default="all",
-        choices=["xianyu", "pinduoduo", "all"],
         help="Platform to scrape (default: all)",
     )
     parser.add_argument(
@@ -75,7 +90,18 @@ def parse_args() -> argparse.Namespace:
         default=str(DATA_DIR / "pipeline_run"),
         help="Directory to write pipeline outputs (default: data/pipeline_run)",
     )
-    return parser.parse_args()
+    parser.add_argument("--sample-only", action="store_true", help="Only use bundled sample products")
+    parser.add_argument("--no-fallback", action="store_true", help="Disable sample fallback when real fetch fails")
+    parser.add_argument(
+        "--backend",
+        choices=["auto", "browser", "proxy", "text"],
+        default="auto",
+        help="Scrape backend order or fixed backend",
+    )
+    args = parser.parse_args()
+    if args.platform not in supported_pipeline_platforms():
+        parser.error(f"--platform must be one of: {', '.join(supported_pipeline_platforms())}")
+    return args
 
 
 def main() -> int:
@@ -84,8 +110,15 @@ def main() -> int:
         platform=args.platform,
         count=args.count,
         output_dir=Path(args.output_dir),
+        use_real_source=not args.sample_only,
+        use_sample_fallback=not args.no_fallback,
+        backend=args.backend,
     )
     return 0
+
+
+def supported_pipeline_platforms() -> tuple[str, ...]:
+    return ("all", *registry.codes(role="demand"))
 
 
 if __name__ == "__main__":

@@ -2,7 +2,7 @@
 
 ## 总体结构
 
-采用「五层流水线」架构，每层职责单一，人工决策节点明确：
+采用“统一候选装配 + 多入口复用”的五层流水线架构。领域产物先沉淀为标准 Schema，再由统一装配层同时服务 CLI、API 与 Streamlit：
 
 ```
 [抓取层 Scraper]
@@ -13,7 +13,10 @@
       ↓
 [文案层 Copywriter]
       ↓
-[决策层 Dashboard]  ← 人工审核节点
+[装配层 app.pipeline]
+      ├─→ [CLI Dashboard Aggregator]
+      ├─→ [FastAPI app.main]
+      └─→ [Streamlit dashboard.py]  ← 人工审核节点
 ```
 
 ## 模块划分
@@ -21,18 +24,20 @@
 ### 1. Scraper（抓取层）
 
 职责：
-- 抓取闲鱼「想要人数」、销量、价格、标题、图片
-- 抓取拼多多热销榜商品数据？不抓1688的
-- 清洗原始数据，输出标准化 `RawProduct` 结构
+- 抓取闲鱼「想要人数」与拼多多销量、价格、标题、图片等原始信号
+- 统一输出标准化 `RawProduct` 结构
+- 输出 `data_source` / `backend_used` / `source_detail` / `fetch_error_category` 等可观测性字段
+- 在真实抓取不可用时回退到样本数据，保障链路可演示
 
 技术选型：
 - `playwright` 处理动态页面
-- `requests` + 代理池处理静态接口
-- 本地 JSON / SQLite 缓存原始数据
+- 文本解析后端与代理/浏览器后端组合降级
+- 本地 JSON 缓存原始数据
 
-反爬策略：
-- 随机 UA、延迟、Cookie 池
-- 失败重试 + 降级到缓存
+当前实现特征：
+- 支持 `auto` / `browser` / `proxy` / `text` 多后端模式
+- 支持样本回退、来源标记、错误分类与抓取摘要输出
+- 提供默认跳过的真实抓取 smoke test 入口，便于人工验证链路
 
 ### 2. Analyzer（分析层）
 
@@ -51,9 +56,9 @@
 
 职责：
 - 从 Analyzer 输出中提取搜索关键词
-- 在 1688 搜索匹配货源？不匹配拼多多
-- 计算利润空间（到手价 - 1688货源价 - 运费 - 平台手续费）
-- 过滤：无痕发货标识、商家信誉、起订量
+- 为候选商品匹配 1688 货源
+- 计算利润空间（售价 - 货源价 - 运费 - 平台手续费）
+- 结合黑名单、无痕发货、商家信誉、起订量做筛选
 
 输出：`MatchedSupplier` 结构，含利润估算
 
@@ -68,16 +73,19 @@
 - 模板引擎 + LLM 润色
 - 禁止虚假宣传表述（见合规清单）
 
-### 5. Dashboard（决策看板层）
+### 5. Assembly + Dashboard（装配与决策层）
 
 职责：
-- 展示候选商品列表（含热度、利润估算、文案草稿）
-- 人工标记：通过 / 跳过 / 加入黑名单（分商家和客户？）
-- 维护商家黑名单、品类黑名单
-- 统计已上架商品利润数据
+- 由 `app.pipeline` 统一装配 `CandidateBundle`
+- 复用同一套候选数据到 FastAPI、Streamlit 与 CLI 聚合输出
+- 展示候选商品列表（含热度、利润估算、文案草稿、AI 资产）
+- 人工标记：通过 / 跳过 / 加入黑名单
+- 维护商家黑名单、品类黑名单与利润记录
 
 技术选型：
-- 轻量 Web UI（FastAPI + 简单前端，或 Streamlit）
+- `FastAPI` 提供候选列表、汇总与决策接口
+- `Streamlit` 提供人工审核工作台
+- `dashboard/__main__.py` 提供 JSON 聚合导出
 
 ## 数据流
 
@@ -85,10 +93,11 @@
 1. Scraper 抓取原始数据 → data/raw/
 2. Analyzer 分析 → data/analyzed/
 3. Matcher 匹配货源 → data/matched/
-4. Copywriter 生成文案 → data/copy/
-5. Dashboard 展示候选 → 人工决策
-6. 人工确认上架 → data/approved/
-7. 结果反馈回分析模型（黑名单、利润记录）
+4. Copywriter 生成文案 → data/copydrafts/
+5. app.pipeline 统一装配候选 + AI 资产
+6. Dashboard / API 读取候选 → 人工决策
+7. 决策、黑名单、利润记录 → data/app.db
+8. CLI 聚合输出 → data/dashboard/ 或 data/pipeline_run/
 ```
 
 ## 目录结构
@@ -99,17 +108,19 @@ ai-picker/
 ├── analyzer/         # 分析模块
 ├── matcher/          # 货源匹配模块
 ├── copywriter/       # 文案生成模块
-├── dashboard/        # 决策看板
+├── dashboard/        # CLI 聚合入口
+├── app/              # 统一装配、API、AI 资产、存储层
 ├── data/
 │   ├── raw/          # 原始抓取数据
 │   ├── analyzed/     # 分析结果
 │   ├── matched/      # 货源匹配结果
-│   ├── copy/         # 文案草稿
-│   ├── approved/     # 已确认商品
-│   └── blacklist/    # 黑名单数据
-├── tests/            # 测试
+│   ├── copydrafts/   # 文案草稿
+│   ├── dashboard/    # CLI 聚合输出
+│   ├── pipeline_run/ # 一次完整流水线运行输出
+│   └── app.db        # SQLite 决策、黑名单、利润记录
+├── tests/            # 自动化测试
 ├── docs/             # 文档
-│   ├── changes/      # 每次 commit 说明
+│   ├── changes/      # 变更记录
 │   └── claims/       # 模块认领说明
 ├── examples/         # 示例数据
 ├── README.md
