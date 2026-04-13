@@ -1,5 +1,11 @@
 from scraper.__main__ import ProductScraper, ScraperError, summarize_products
-from scraper.fetchers import _extract_pinduoduo_records, _extract_signal_from_context, _extract_xianyu_records
+from scraper.fetchers import (
+    BasePageFetcher,
+    _extract_pinduoduo_records,
+    _extract_signal_from_context,
+    _extract_xianyu_records,
+    fetch_real_products,
+)
 
 import pytest
 
@@ -154,6 +160,75 @@ def test_real_scrape_result_includes_observability_fields(monkeypatch: pytest.Mo
 
 
 
+def test_fetch_real_products_balances_all_platform_limits(monkeypatch: pytest.MonkeyPatch) -> None:
+    from scraper import fetchers as fetchers_module
+
+    captured: list[tuple[str, int, str | None]] = []
+
+    class _FakeSource:
+        def __init__(self, platform_code: str) -> None:
+            self._platform_code = platform_code
+
+        def fetch(self, limit: int, keyword: str | None = None) -> list[dict[str, object]]:
+            captured.append((self._platform_code, limit, keyword))
+            return [
+                {
+                    "id": f"{self._platform_code}-{index}",
+                    "platform": self._platform_code,
+                    "title": f"商品{index}",
+                    "price": 9.9 + index,
+                    "fetched_at": "2026-04-09T06:00:00Z",
+                    "data_source": "real",
+                    "backend_used": "text",
+                    "source_detail": f"{self._platform_code}:text:keyword={keyword or ''}",
+                    "fetch_error_category": None,
+                }
+                for index in range(limit)
+            ]
+
+    monkeypatch.setattr(
+        fetchers_module,
+        "REAL_SOURCE_FACTORIES",
+        {
+            "xianyu": lambda page_fetcher: _FakeSource("xianyu"),
+            "pinduoduo": lambda page_fetcher: _FakeSource("pinduoduo"),
+        },
+    )
+
+    products = fetch_real_products(platform="all", limit=5, backend="text", keyword="收纳")
+
+    assert len(products) == 5
+    assert sorted(limit for _, limit, _ in captured) == [2, 3]
+    assert {platform for platform, _, _ in captured} == {"xianyu", "pinduoduo"}
+    assert {keyword for _, _, keyword in captured} == {"收纳"}
+
+
+
+def test_fetch_real_products_uses_actual_backend_in_source_detail() -> None:
+    class _FakeFetcher(BasePageFetcher):
+        backend_name = "base"
+
+        def __init__(self) -> None:
+            self.last_backend_used = "proxy"
+
+        def fetch_text(self, url: str) -> str:
+            assert "goofish.com/search" in url
+            return "奶油风桌面收纳盒 ¥29.9\n168人想要"
+
+    products = fetch_real_products(
+        platform="xianyu",
+        limit=1,
+        backend="auto",
+        fetcher=_FakeFetcher(),
+        keyword="收纳",
+    )
+
+    assert len(products) == 1
+    assert products[0]["backend_used"] == "proxy"
+    assert products[0]["source_detail"] == "xianyu:proxy:keyword=收纳"
+
+
+
 def test_extract_xianyu_records_reads_contextual_want_count() -> None:
     text = """
     奶油风桌面收纳盒 ¥29.9
@@ -162,13 +237,21 @@ def test_extract_xianyu_records_reads_contextual_want_count() -> None:
     96人想要
     """
 
-    products = _extract_xianyu_records(text=text, prefix="xy-test", fallback_category="闲鱼搜索", limit=5)
+    products = _extract_xianyu_records(
+        text=text,
+        prefix="xy-test",
+        fallback_category="闲鱼搜索",
+        limit=5,
+        backend_used="text",
+        source_detail="xianyu:text:keyword=收纳",
+    )
 
     assert len(products) == 2
     assert products[0]["want_count"] == 168
     assert products[0]["category"] == "家居收纳"
     assert products[0]["data_source"] == "real"
-    assert products[0]["source_detail"] == "xy-test"
+    assert products[0]["backend_used"] == "text"
+    assert products[0]["source_detail"] == "xianyu:text:keyword=收纳"
     assert products[1]["want_count"] == 96
 
 
@@ -181,13 +264,21 @@ def test_extract_pinduoduo_records_reads_contextual_sales_count() -> None:
     已拼356件
     """
 
-    products = _extract_pinduoduo_records(text=text, prefix="pdd-test", fallback_category="拼多多搜索", limit=5)
+    products = _extract_pinduoduo_records(
+        text=text,
+        prefix="pdd-test",
+        fallback_category="拼多多搜索",
+        limit=5,
+        backend_used="browser",
+        source_detail="pinduoduo:browser:keyword=宿舍",
+    )
 
     assert len(products) == 2
     assert products[0]["sales_count"] == 1824
     assert products[0]["category"] == "宿舍用品"
     assert products[0]["data_source"] == "real"
-    assert products[0]["source_detail"] == "pdd-test"
+    assert products[0]["backend_used"] == "browser"
+    assert products[0]["source_detail"] == "pinduoduo:browser:keyword=宿舍"
     assert products[1]["sales_count"] == 356
 
 

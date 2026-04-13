@@ -8,3 +8,14 @@ venv/
 .env
 .ccpanes/
 .idea/
+
+# Sensitive - login cookies
+.cookies/
+
+# Temporary probe/test files
+data/raw/probe_*.py
+data/raw/*_raw.txt
+data/raw/playwright_probe/
+data/raw/stealth_probe/
+data/raw/xianyu_latest.json
+data/raw/real_fetch_probe*

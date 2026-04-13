@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
+from pathlib import Path
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -26,6 +27,26 @@ DEFAULT_BACKEND_ORDER: tuple[str, ...] = ("browser", "proxy", "text")
 FetchBackend = Literal["auto", "browser", "proxy", "text"]
 
 register_default_platforms()
+
+
+
+def _load_dotenv() -> None:
+    env_path = Path(".env")
+    if not env_path.exists():
+        return
+
+    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        normalized_key = key.strip()
+        normalized_value = value.strip().strip('"').strip("'")
+        if normalized_key and normalized_key not in os.environ:
+            os.environ[normalized_key] = normalized_value
+
+
+_load_dotenv()
 
 
 class FetchError(Exception):
@@ -164,8 +185,13 @@ class FirecrawlPageFetcher(BasePageFetcher):
 class PlaywrightPageFetcher(BasePageFetcher):
     backend_name = "browser"
 
-    def __init__(self, timeout: float = REQUEST_TIMEOUT) -> None:
+    def __init__(
+        self,
+        timeout: float = REQUEST_TIMEOUT,
+        cookies_file: str | None = None,
+    ) -> None:
         self._timeout_ms = int(timeout * 1000)
+        self._cookies_file = cookies_file
 
     def fetch_text(self, url: str) -> str:
         try:
@@ -176,9 +202,28 @@ class PlaywrightPageFetcher(BasePageFetcher):
         try:
             with sync_playwright() as playwright:
                 browser = playwright.chromium.launch(headless=True)
-                page = browser.new_page(user_agent=USER_AGENT, viewport={"width": 1440, "height": 2200})
+
+                # 创建 context 并加载 cookies（如果提供）
+                context_options: dict[str, Any] = {
+                    "user_agent": USER_AGENT,
+                    "viewport": {"width": 1440, "height": 2200},
+                    "locale": "zh-CN",
+                }
+
+                context = browser.new_context(**context_options)
+
+                # 加载 cookies（如果有）
+                if self._cookies_file:
+                    cookies_path = Path(self._cookies_file)
+                    if cookies_path.exists():
+                        import json
+
+                        cookies = json.loads(cookies_path.read_text(encoding="utf-8"))
+                        context.add_cookies(cookies)
+
+                page = context.new_page()
                 page.goto(url, wait_until="domcontentloaded", timeout=self._timeout_ms)
-                page.wait_for_timeout(2500)
+                page.wait_for_timeout(3000)  # 等待 JS 加载
                 text = page.locator("body").inner_text(timeout=self._timeout_ms).strip()
                 browser.close()
         except Exception as exc:  # pragma: no cover - depends on browser runtime
@@ -192,20 +237,27 @@ class PlaywrightPageFetcher(BasePageFetcher):
 class MultiBackendFetcher(BasePageFetcher):
     backend_name = "auto"
 
-    def __init__(self, backend: FetchBackend = "auto") -> None:
+    def __init__(
+        self,
+        backend: FetchBackend = "auto",
+        cookies_file: str | None = None,
+    ) -> None:
         self._backend = backend
         self._fetchers: dict[str, BasePageFetcher] = {
-            "browser": PlaywrightPageFetcher(),
+            "browser": PlaywrightPageFetcher(cookies_file=cookies_file),
             "proxy": FirecrawlPageFetcher(),
             "text": JinaPageFetcher(),
         }
 
     def fetch_text(self, url: str) -> str:
         attempts: list[BackendAttempt] = []
+        self.last_backend_used: str | None = None
         for backend_name in self._resolve_order():
             fetcher = self._fetchers[backend_name]
             try:
-                return fetcher.fetch_text(url)
+                text = fetcher.fetch_text(url)
+                self.last_backend_used = backend_name
+                return text
             except FetchError as exc:
                 attempts.append(
                     BackendAttempt(
@@ -233,11 +285,14 @@ class XianyuRealSource:
     def fetch(self, limit: int, keyword: str | None = None) -> list[dict[str, Any]]:
         query = build_platform_query(Platform.XIANYU, keyword=keyword)
         text = self._fetcher.fetch_text(query.url)
+        backend_used = _resolve_fetcher_backend(self._fetcher)
         items = _extract_xianyu_records(
             text=text,
             prefix=query.prefix,
             fallback_category=query.fallback_category,
             limit=limit,
+            backend_used=backend_used,
+            source_detail=_build_source_detail(query, backend_used),
         )
         if not items:
             raise FetchError("No xianyu products could be parsed")
@@ -251,11 +306,14 @@ class PinduoduoRealSource:
     def fetch(self, limit: int, keyword: str | None = None) -> list[dict[str, Any]]:
         query = build_platform_query(Platform.PINDUODUO, keyword=keyword)
         text = self._fetcher.fetch_text(query.url)
+        backend_used = _resolve_fetcher_backend(self._fetcher)
         items = _extract_pinduoduo_records(
             text=text,
             prefix=query.prefix,
             fallback_category=query.fallback_category,
             limit=limit,
+            backend_used=backend_used,
+            source_detail=_build_source_detail(query, backend_used),
         )
         if not items:
             raise FetchError("No pinduoduo products could be parsed")
@@ -292,7 +350,7 @@ def build_platform_query(platform: Platform, keyword: str | None = None) -> Plat
     return PlatformQuery(
         platform=platform,
         keyword=resolved_keyword,
-        url=f"https://mobile.yangkeduo.com/search_result.html?search_key={quote(resolved_keyword)}",
+        url=f"https://m.pinduoduo.com/search?q={quote(resolved_keyword)}",
         prefix="pdd-real",
         score_field="sales_count",
         fallback_category=f"拼多多搜索:{resolved_keyword}",
@@ -305,6 +363,7 @@ def fetch_real_products(
     backend: FetchBackend = "auto",
     fetcher: BasePageFetcher | None = None,
     keyword: str | None = None,
+    cookies_file: str | None = None,
 ) -> list[dict[str, Any]]:
     if limit < 1:
         return []
@@ -313,24 +372,39 @@ def fetch_real_products(
     if platform != "all" and platform not in supported_codes:
         raise FetchError(f"Unsupported platform: {platform}")
 
-    shared_fetcher = fetcher or MultiBackendFetcher(backend=backend)
+    # 创建带 cookies 的 fetcher
+    if fetcher is None:
+        if cookies_file:
+            shared_fetcher = MultiBackendFetcher(backend=backend, cookies_file=cookies_file)
+        else:
+            shared_fetcher = MultiBackendFetcher(backend=backend)
+    else:
+        shared_fetcher = fetcher
+
     products: list[dict[str, Any]] = []
     selected_codes = supported_codes if platform == "all" else (platform,)
+    planned_limits = _plan_platform_limits(limit=limit, platform_count=len(selected_codes))
 
-    for code in selected_codes:
-        remaining = max(limit - len(products), 0) if platform == "all" else limit
-        if remaining == 0:
-            break
+    for code, platform_limit in zip(selected_codes, planned_limits, strict=False):
+        if platform_limit == 0:
+            continue
 
         factory = REAL_SOURCE_FACTORIES.get(code)
         if factory is None:
             continue
-        products.extend(factory(shared_fetcher).fetch(remaining, keyword=keyword))
+        products.extend(factory(shared_fetcher).fetch(platform_limit, keyword=keyword))
 
     return products[:limit]
 
 
-def _extract_xianyu_records(text: str, prefix: str, fallback_category: str, limit: int) -> list[dict[str, Any]]:
+def _extract_xianyu_records(
+    text: str,
+    prefix: str,
+    fallback_category: str,
+    limit: int,
+    backend_used: str | None = None,
+    source_detail: str | None = None,
+) -> list[dict[str, Any]]:
     return _extract_records_by_platform(
         text=text,
         platform=Platform.XIANYU,
@@ -339,11 +413,20 @@ def _extract_xianyu_records(text: str, prefix: str, fallback_category: str, limi
         limit=limit,
         signal_keyword="想要",
         signal_field="want_count",
+        backend_used=backend_used,
+        source_detail=source_detail,
     )
 
 
 
-def _extract_pinduoduo_records(text: str, prefix: str, fallback_category: str, limit: int) -> list[dict[str, Any]]:
+def _extract_pinduoduo_records(
+    text: str,
+    prefix: str,
+    fallback_category: str,
+    limit: int,
+    backend_used: str | None = None,
+    source_detail: str | None = None,
+) -> list[dict[str, Any]]:
     return _extract_records_by_platform(
         text=text,
         platform=Platform.PINDUODUO,
@@ -352,6 +435,8 @@ def _extract_pinduoduo_records(text: str, prefix: str, fallback_category: str, l
         limit=limit,
         signal_keyword="已拼",
         signal_field="sales_count",
+        backend_used=backend_used,
+        source_detail=source_detail,
     )
 
 
@@ -364,19 +449,32 @@ def _extract_records_by_platform(
     limit: int,
     signal_keyword: str,
     signal_field: str,
+    backend_used: str | None = None,
+    source_detail: str | None = None,
 ) -> list[dict[str, Any]]:
     lines = [line.strip(" -\t") for line in text.splitlines()]
     current_time = utc_now_iso()
     records: list[dict[str, Any]] = []
     seen_titles: set[str] = set()
+    consumed_indexes: set[int] = set()
 
     for index, line in enumerate(lines):
         if len(records) >= limit:
             break
+        if index in consumed_indexes:
+            continue
         if _skip_line(line):
+            continue
+        if _is_signal_only_line(line, signal_keyword):
             continue
 
         parsed = _parse_title_price(line)
+        if parsed is None and index + 1 < len(lines):
+            next_line = lines[index + 1]
+            if not _skip_line(next_line):
+                parsed = _parse_title_price(f"{line} {next_line}")
+                if parsed is not None:
+                    consumed_indexes.add(index + 1)
         if parsed is None:
             continue
 
@@ -399,6 +497,8 @@ def _extract_records_by_platform(
             fallback_category=fallback_category,
             signal_field=signal_field,
             signal_value=signal,
+            backend_used=backend_used,
+            source_detail=source_detail,
         )
         records.append(payload.to_dict())
 
@@ -416,6 +516,8 @@ def _build_source_record(
     fallback_category: str,
     signal_field: str,
     signal_value: int,
+    backend_used: str | None = None,
+    source_detail: str | None = None,
 ) -> SourceRecord:
     return SourceRecord(
         id=f"{prefix}-{ordinal:04d}",
@@ -428,8 +530,8 @@ def _build_source_record(
         want_count=signal_value if signal_field == "want_count" else None,
         sales_count=signal_value if signal_field == "sales_count" else None,
         data_source="real",
-        backend_used=_infer_backend_from_prefix(prefix),
-        source_detail=prefix,
+        backend_used=backend_used or _infer_backend_from_prefix(prefix),
+        source_detail=source_detail or prefix,
     )
 
 
@@ -458,25 +560,42 @@ def _skip_line(line: str) -> bool:
 
 
 def _parse_title_price(line: str) -> tuple[str, float] | None:
-    price_match = re.search(r"(?:¥|￥)\s*(\d+(?:\.\d{1,2})?)|(\d+(?:\.\d{1,2})?)\s*元", line)
+    price_match = re.search(r"(?:¥|￥)\s*([\d,]+(?:\.\d{1,2})?)|([\d,]+(?:\.\d{1,2})?)\s*元", line)
     if price_match is None:
         return None
 
     price_text = next(group for group in price_match.groups() if group)
-    price = float(price_text)
+    price = float(price_text.replace(",", ""))
     if price <= 0:
         return None
 
-    title = line[: price_match.start()].strip(" :：|-·【】[]")
+    title = _normalize_title(line[: price_match.start()])
     if len(title) < 4:
-        title = line[price_match.end() :].strip(" :：|-·【】[]")
+        title = _normalize_title(line[price_match.end() :])
     if len(title) < 4:
         return None
 
+    return title, price
+
+
+
+def _normalize_title(value: str) -> str:
+    title = value.strip(" :：|-·【】[]")
+    title = re.sub(r"^(?:¥|￥)?\s*[\d,]+(?:\.\d{1,2})?\s*(?:元|起)?\s*", "", title)
+    title = re.sub(r"\s*(?:¥|￥)\s*[\d,]+(?:\.\d{1,2})?\s*(?:元|起)?$", "", title)
     title = re.sub(r"\s+", " ", title)
     if len(title) > 60:
         title = title[:60].rstrip()
-    return title, price
+    return title
+
+
+def _is_signal_only_line(line: str, keyword: str) -> bool:
+    if keyword not in line:
+        return False
+    compact = re.sub(r"[\s,，件人次+]+", "", line)
+    compact = compact.replace(keyword, "")
+    return bool(compact) and compact.isdigit()
+
 
 
 def _extract_signal_from_context(lines: list[str], index: int, keyword: str) -> int | None:
@@ -532,6 +651,29 @@ def _infer_signal(title: str, platform: Platform) -> int:
     if platform is Platform.XIANYU:
         return max(seed, 12)
     return max(seed * 5, 30)
+
+
+def _plan_platform_limits(limit: int, platform_count: int) -> tuple[int, ...]:
+    if limit < 1 or platform_count < 1:
+        return ()
+    base_limit, extra = divmod(limit, platform_count)
+    return tuple(base_limit + (1 if index < extra else 0) for index in range(platform_count))
+
+
+
+def _resolve_fetcher_backend(fetcher: BasePageFetcher) -> str:
+    last_backend = getattr(fetcher, "last_backend_used", None)
+    if isinstance(last_backend, str) and last_backend:
+        return last_backend
+    if fetcher.backend_name != "base":
+        return fetcher.backend_name
+    return "custom"
+
+
+
+def _build_source_detail(query: PlatformQuery, backend_used: str) -> str:
+    return f"{query.platform.value}:{backend_used}:keyword={query.keyword}"
+
 
 
 def _infer_backend_from_prefix(prefix: str) -> str | None:

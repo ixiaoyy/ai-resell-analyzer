@@ -28,6 +28,8 @@ def run_pipeline(
     use_real_source: bool = True,
     use_sample_fallback: bool = True,
     backend: FetchBackend = "auto",
+    keyword: str | None = None,
+    cookies_file: str | None = None,
 ) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -37,8 +39,9 @@ def run_pipeline(
         use_real_source=use_real_source,
         use_sample_fallback=use_sample_fallback,
         backend=backend,
+        cookies_file=cookies_file,
     )
-    raw_products = scraper.scrape(platform=platform, count=count)
+    raw_products = scraper.scrape(platform=platform, count=count, keyword=keyword)
     raw_path.write_text(json.dumps(raw_products, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"[1/4] Scraped    {len(raw_products)} products  → {raw_path}")
 
@@ -90,6 +93,7 @@ def parse_args() -> argparse.Namespace:
         default=str(DATA_DIR / "pipeline_run"),
         help="Directory to write pipeline outputs (default: data/pipeline_run)",
     )
+    parser.add_argument("--keyword", default=None, help="Search keyword for real scraping")
     parser.add_argument("--sample-only", action="store_true", help="Only use bundled sample products")
     parser.add_argument("--no-fallback", action="store_true", help="Disable sample fallback when real fetch fails")
     parser.add_argument(
@@ -98,6 +102,7 @@ def parse_args() -> argparse.Namespace:
         default="auto",
         help="Scrape backend order or fixed backend",
     )
+    parser.add_argument("--cookies-file", default=None, help="Cookies file for authenticated scraping")
     args = parser.parse_args()
     if args.platform not in supported_pipeline_platforms():
         parser.error(f"--platform must be one of: {', '.join(supported_pipeline_platforms())}")
@@ -113,6 +118,8 @@ def main() -> int:
         use_real_source=not args.sample_only,
         use_sample_fallback=not args.no_fallback,
         backend=args.backend,
+        keyword=args.keyword,
+        cookies_file=args.cookies_file,
     )
     return 0
 

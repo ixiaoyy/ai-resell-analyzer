@@ -26,12 +26,14 @@ class ProductScraper:
         use_real_source: bool = True,
         use_sample_fallback: bool = False,
         backend: FetchBackend = "auto",
+        cookies_file: str | None = None,
     ) -> None:
         self.use_real_source = use_real_source
         self.use_sample_fallback = use_sample_fallback
         self.backend = backend
+        self.cookies_file = cookies_file
 
-    def scrape(self, platform: str = "all", count: int = 5) -> list[dict]:
+    def scrape(self, platform: str = "all", count: int = 5, keyword: str | None = None) -> list[dict]:
         if platform not in supported_platform_codes():
             raise ScraperError("Invalid platform")
         if count < 1:
@@ -41,7 +43,13 @@ class ProductScraper:
 
         if self.use_real_source:
             try:
-                products = fetch_real_products(platform=platform, limit=count, backend=self.backend)
+                products = fetch_real_products(
+                    platform=platform,
+                    limit=count,
+                    backend=self.backend,
+                    keyword=keyword,
+                    cookies_file=self.cookies_file,
+                )
                 if products:
                     return [
                         {
@@ -59,20 +67,30 @@ class ProductScraper:
                     raise ScraperError("Real fetch failed and sample fallback is disabled") from None
 
         if self.use_sample_fallback:
-            return self._sample_products(platform=platform, count=count, fetch_error_category=fetch_error_category)
+            return self._sample_products(platform=platform, count=count, fetch_error_category=fetch_error_category, keyword=keyword)
 
         return []
 
-    def _sample_products(self, platform: str, count: int, fetch_error_category: str | None = None) -> list[dict]:
+    def _sample_products(
+        self,
+        platform: str,
+        count: int,
+        fetch_error_category: str | None = None,
+        keyword: str | None = None,
+    ) -> list[dict]:
         products = [product.model_dump(mode="json") for product in build_sample_raw_products()]
         if platform != "all":
             products = [item for item in products if item["platform"] == platform]
+        source_detail = f"sample:{platform}"
+        normalized_keyword = (keyword or "").strip()
+        if normalized_keyword:
+            source_detail = f"{source_detail}:keyword={normalized_keyword}"
         return [
             {
                 **item,
                 "data_source": "sample",
                 "backend_used": "sample",
-                "source_detail": f"sample:{platform}",
+                "source_detail": source_detail,
                 "fetch_error_category": fetch_error_category,
             }
             for item in products[:count]
@@ -121,6 +139,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--platform", default="all", help="按平台过滤输出结果")
     parser.add_argument("--limit", type=int, default=100, help="限制输出条数")
     parser.add_argument("--output", type=Path, default=None, help="输出 JSON 文件路径")
+    parser.add_argument("--keyword", default=None, help="真实抓取搜索关键词；样本回退时仅写入来源标记")
     parser.add_argument("--sample-only", action="store_true", help="仅使用本地样本，不发起真实抓取")
     parser.add_argument("--no-fallback", action="store_true", help="真实抓取失败时不回退样本")
     parser.add_argument(
@@ -128,6 +147,11 @@ def parse_args() -> argparse.Namespace:
         choices=["auto", "browser", "proxy", "text"],
         default="auto",
         help="抓取后端：auto=浏览器→专用代理→文本代理，browser=仅 Playwright，proxy=仅 Firecrawl，text=仅 Jina",
+    )
+    parser.add_argument(
+        "--cookies-file",
+        default=None,
+        help="登录态 cookies 文件路径（用于闲鱼/拼多多/1688 登录态抓取）",
     )
     args = parser.parse_args()
     if args.platform not in supported_platform_codes():
@@ -141,8 +165,9 @@ def main() -> int:
         use_real_source=not args.sample_only,
         use_sample_fallback=not args.no_fallback,
         backend=args.backend,
+        cookies_file=args.cookies_file,
     )
-    products = scraper.scrape(platform=args.platform, count=args.limit)
+    products = scraper.scrape(platform=args.platform, count=args.limit, keyword=args.keyword)
     summary = summarize_products(products)
     output_path = build_output_path(args.platform, args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
